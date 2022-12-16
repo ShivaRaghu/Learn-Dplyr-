@@ -1,0 +1,232 @@
+---
+title: "dplyr exercise"
+author: "Shiva Raghuvanshi"
+date: "12/15/2022"
+output: html_document
+---
+# Explore Data Manipulation in R with Dplyr package
+
+Load dplyr package,
+load flights dataset,
+view the hflights dataset
+
+```{r setup, include=FALSE}
+# load library package
+library(dplyr)
+library(hflights)
+```
+
+
+
+```{r pressure, echo=FALSE}
+data(hflights)
+head(hflights)
+```
+ 
+ Create a local data frame with tbl_df()
+```{r}
+flights <- tbl_df(hflights)
+head(flights)
+```
+ 
+# Dplyr Filter: Works on rows 
+Explore filtering data with dplyr and compare it with Base R commands
+ 
+```{r}
+#Base R commands for filtering all the rows for January 1
+flights[flights$Month == 1 & flights$DayofMonth == 1, ]
+
+# Dplyr commands for filtering January 1 data
+filter(flights, Month == 1, DayofMonth == 1 )
+```
+
+```{r}
+# Use dplyr to filter flights from Month January with Destination "DFW"
+filter(flights, Month == 1, Dest == "DFW") 
+
+# Use %in% operator for filtering data as well
+filter(flights, UniqueCarrier %in% c("AA", "UA"))
+
+# Show the last few rows of data after filtering 
+tail(filter(flights, Month %in% c("1", "2"), Dest %in% c("DFW", "MIA")))
+
+```
+
+# select: Filter the specified columns
+
+```{r}
+# Lets see Base R code for selecting DepTime, ArrTime, and FlightNum column
+flights[, c('DepTime', 'ArrTime', 'FlightNum')]
+
+# Now, Dplyr way to select columns
+select(flights, DepTime, ArrTime, FlightNum)
+```
+
+# Piping with %>%:  Perform multiple operations
+```{r}
+# Look at the Flight Carriers that has Departure Delay of > 60 min
+filter(select(flights, UniqueCarrier, DepDelay), DepDelay > 60)
+
+# Now use piping
+flights %>%
+  select(UniqueCarrier, DepDelay) %>%
+  filter(DepDelay > 60) %>%
+  arrange(DepDelay) # Arrange in increasing order
+```
+
+```{r}
+# Calculate Euclidean Distance between two Vectors
+
+y <- 1:10
+x <- 3:30
+(x-y)^2
+sum((x-y)^2)
+sqrt(sum((x-y)^2)) 
+
+#Dplyr
+(x-y)^2 %>%
+  sum() %>%
+  sqrt()
+
+```
+
+# arrange:
+```{r}
+# Base R commands for ascending or descending ordr of data
+flights[order(flights$DepDelay), c("UniqueCarrier", "DepDelay")]
+
+#Dplyr
+select(flights, UniqueCarrier, DepDelay) %>%
+  arrange(DepDelay)
+
+# Descending
+select(flights, UniqueCarrier, DepDelay) %>%
+  arrange(desc(DepDelay))
+```
+
+# mutate: Add new variables
+```{r}
+# Base R to add new variable/column "speed" in mph
+flights$speed <- flights$Distance / flights$AirTime*60
+flights[, c("Distance", "AirTime", "speed")]
+
+#mutate
+flights %>%
+  select(Distance, AirTime) %>%
+  mutate(speed = Distance/AirTime*60)
+
+# Now store the new variable "speed" into flights data
+flights <- flights %>%
+  mutate(speed = Distance/AirTime*60)
+```
+
+# summarise: its narrows down the groups into values,such as mean,std dev,average...
+
+```{r}
+head(flights)
+```
+
+
+
+```{r}
+#base R
+head(with(flights, tapply(ArrDelay, Dest, mean, na.rm = TRUE)))
+
+```
+
+```{r}
+# summarise
+
+flights %>%
+  group_by(Dest) %>%
+  summarise(avg_delay = mean(ArrDelay, na.rm = TRUE))
+  
+```
+
+```{r}
+# For UniqueCarrier, find mean arrival and departure delays using summarise
+
+flights %>%
+  select(UniqueCarrier, ArrDelay, DepDelay) %>%
+  group_by(UniqueCarrier) %>%
+  summarise(avg_arr_delay = mean(ArrDelay, na.rm = TRUE), avg_dep_delay = mean(DepDelay, na.rm = TRUE))
+
+```
+```{r}
+# For UniqueCarrier, find min and max arrival and departure delays using summarise
+
+flights %>%
+  group_by(UniqueCarrier) %>%
+  summarise_each(funs(min(., na.rm=TRUE), max(., na.rm = TRUE)), ends_with('Delay'))
+```
+
+# Count
+```{r}
+# for each day of the Year, count total number of flights, sort in descending order
+ flights %>%
+   group_by(DayofMonth, Month) %>%
+   count(DayofMonth, Month, sort = TRUE)
+ 
+ # OR
+ flights %>%
+   group_by(DayofMonth, Month) %>%
+   summarise(total_flights = n()) %>%
+   arrange(desc(total_flights))
+
+```
+some more summarize exercise
+```{r}
+# for each destination, count total flights and distinct planes
+flights
+flights %>%
+  group_by(Dest) %>%
+  summarise(total_dest_flights = n(), plane_count = n_distinct(TailNum))
+```
+
+```{r}
+# For each destination, show the number of canceled and not canceled flights
+flights %>%
+  group_by(Dest) %>%
+  select(Cancelled) %>%
+  table() %>%
+  head()
+
+
+```
+
+# Windows Functions
+```{r}
+#For each carrir, calculate 2 days with longest Departure Delay
+
+flights %>%
+  group_by(UniqueCarrier) %>%
+  select(Month, DayofMonth, DepDelay) %>%
+  top_n(2) %>%
+  arrange(UniqueCarrier,desc(DepDelay))
+  
+```
+
+# offset functions (lead and lag)
+
+```{r}
+# for each month, calculate number of flights and and change from previous month
+flights %>% 
+  group_by(Month) %>%
+  summarise(flight_count = n()) %>%
+  mutate(change = flight_count - lag(flight_count))
+```
+# Random Sample
+```{r}
+# randomly sample the 5 rows without replacement
+flights %>% sample_n(5, )
+#randomly sample a fraction of data with replacement
+flights %>% sample_frac(0.2, replace = TRUE)
+```
+
+# Str vs Glimpse
+```{r}
+glimpse(flights)
+```
+
+
+
